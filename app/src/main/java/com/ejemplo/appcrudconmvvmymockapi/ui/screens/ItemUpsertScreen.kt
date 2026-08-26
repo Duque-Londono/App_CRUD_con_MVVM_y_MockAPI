@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.ejemplo.appcrudconmvvmymockapi.data.util.Resource
 import com.ejemplo.appcrudconmvvmymockapi.ui.viewmodel.ItemViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -16,8 +17,8 @@ fun ItemUpsertScreen(
     itemId: String? = null,
     onBack: () -> Unit
 ) {
-    val items by viewModel.items.collectAsState()
-    val item = items.find { it.id == itemId }
+    val state by viewModel.itemsState.collectAsState()
+    val item = (state as? Resource.Success)?.data?.find { it.id == itemId }
 
     var name by remember { mutableStateOf(item?.name ?: "") }
     var description by remember { mutableStateOf(item?.description ?: "") }

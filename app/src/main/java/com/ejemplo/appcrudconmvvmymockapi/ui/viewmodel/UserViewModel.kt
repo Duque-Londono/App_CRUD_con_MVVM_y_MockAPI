@@ -5,21 +5,18 @@ import androidx.lifecycle.viewModelScope
 import com.ejemplo.appcrudconmvvmymockapi.data.api.RetrofitClient
 import com.ejemplo.appcrudconmvvmymockapi.data.model.User
 import com.ejemplo.appcrudconmvvmymockapi.data.repository.UserRepository
+import com.ejemplo.appcrudconmvvmymockapi.data.util.Resource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
+import java.io.IOException
 
 class UserViewModel : ViewModel() {
     private val repository = UserRepository(RetrofitClient.apiService)
 
-    private val _users = MutableStateFlow<List<User>>(emptyList())
-    val users: StateFlow<List<User>> = _users
-
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading
-
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error
+    private val _usersState = MutableStateFlow<Resource<List<User>>>(Resource.Loading())
+    val usersState: StateFlow<Resource<List<User>>> = _usersState
 
     init {
         fetchUsers()
@@ -27,17 +24,22 @@ class UserViewModel : ViewModel() {
 
     fun fetchUsers() {
         viewModelScope.launch {
-            _isLoading.value = true
+            _usersState.value = Resource.Loading()
             try {
-                _users.value = repository.getUsers()
-                _error.value = null
+                val response = repository.getUsers()
+                _usersState.value = Resource.Success(response)
+            } catch (e: IOException) {
+                _usersState.value = Resource.Error("No se pudo conectar al servidor. Revisa tu conexión.")
+            } catch (e: HttpException) {
+                _usersState.value = Resource.Error("Error del servidor: ${e.code()}")
             } catch (e: Exception) {
-                e.printStackTrace()
-                _error.value = e.message
-            } finally {
-                _isLoading.value = false
+                _usersState.value = Resource.Error("Ocurrió un error inesperado: ${e.localizedMessage}")
             }
         }
+    }
+
+    fun retry() {
+        fetchUsers()
     }
 
     fun addUser(name: String, email: String) {
@@ -46,7 +48,7 @@ class UserViewModel : ViewModel() {
                 repository.createUser(User(name = name, email = email))
                 fetchUsers()
             } catch (e: Exception) {
-                _error.value = e.message
+                _usersState.value = Resource.Error("Error al agregar usuario: ${e.message}")
             }
         }
     }
@@ -57,7 +59,7 @@ class UserViewModel : ViewModel() {
                 repository.updateUser(id, User(id = id, name = name, email = email))
                 fetchUsers()
             } catch (e: Exception) {
-                _error.value = e.message
+                _usersState.value = Resource.Error("Error al actualizar usuario: ${e.message}")
             }
         }
     }
@@ -68,7 +70,7 @@ class UserViewModel : ViewModel() {
                 repository.deleteUser(id)
                 fetchUsers()
             } catch (e: Exception) {
-                _error.value = e.message
+                _usersState.value = Resource.Error("Error al eliminar usuario: ${e.message}")
             }
         }
     }

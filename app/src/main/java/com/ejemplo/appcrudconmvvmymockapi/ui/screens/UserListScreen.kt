@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.ejemplo.appcrudconmvvmymockapi.data.util.Resource
 import com.ejemplo.appcrudconmvvmymockapi.ui.viewmodel.UserViewModel
 
 @Composable
@@ -26,9 +27,7 @@ fun UserListScreen(
     onEditUser: (String) -> Unit,
     onAddUser: () -> Unit
 ) {
-    val users by viewModel.users.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val state by viewModel.usersState.collectAsState()
 
     Scaffold(
         floatingActionButton = {
@@ -38,40 +37,54 @@ fun UserListScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-            if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (error != null) {
-                Text(text = "Error: $error", color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
-            } else if (users.isEmpty()) {
-                Text(text = "No hay usuarios disponibles", modifier = Modifier.align(Alignment.Center))
-            } else {
-                LazyColumn {
-                    items(users) { user ->
-                        ListItem(
-                            leadingContent = {
-                                AsyncImage(
-                                    model = user.avatar,
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            },
-                            headlineContent = { Text(user.name) },
-                            supportingContent = { Text(user.email) },
-                            trailingContent = {
-                                Row {
-                                    IconButton(onClick = { onEditUser(user.id!!) }) {
-                                        Icon(Icons.Default.Edit, contentDescription = "Edit")
-                                    }
-                                    IconButton(onClick = { viewModel.deleteUser(user.id!!) }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Delete")
-                                    }
-                                }
-                            }
+            when (state) {
+                is Resource.Loading -> {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                }
+                is Resource.Error -> {
+                    ErrorView(
+                        message = state.message ?: "Error desconocido",
+                        onRetry = { viewModel.retry() },
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                is Resource.Success -> {
+                    val users = state.data ?: emptyList()
+                    if (users.isEmpty()) {
+                        Text(
+                            text = "No hay usuarios disponibles",
+                            modifier = Modifier.align(Alignment.Center)
                         )
-                        HorizontalDivider()
+                    } else {
+                        LazyColumn {
+                            items(users) { user ->
+                                ListItem(
+                                    leadingContent = {
+                                        AsyncImage(
+                                            model = user.avatar,
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .clip(CircleShape),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    },
+                                    headlineContent = { Text(user.name) },
+                                    supportingContent = { Text(user.email) },
+                                    trailingContent = {
+                                        Row {
+                                            IconButton(onClick = { onEditUser(user.id!!) }) {
+                                                Icon(Icons.Default.Edit, contentDescription = "Edit")
+                                            }
+                                            IconButton(onClick = { viewModel.deleteUser(user.id!!) }) {
+                                                Icon(Icons.Default.Delete, contentDescription = "Delete")
+                                            }
+                                        }
+                                    }
+                                )
+                                HorizontalDivider()
+                            }
+                        }
                     }
                 }
             }

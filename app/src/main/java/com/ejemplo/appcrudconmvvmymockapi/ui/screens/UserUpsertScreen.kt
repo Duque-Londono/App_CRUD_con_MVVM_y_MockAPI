@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.ejemplo.appcrudconmvvmymockapi.data.util.Resource
 import com.ejemplo.appcrudconmvvmymockapi.ui.viewmodel.UserViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -16,8 +17,8 @@ fun UserUpsertScreen(
     userId: String? = null,
     onBack: () -> Unit
 ) {
-    val users by viewModel.users.collectAsState()
-    val user = users.find { it.id == userId }
+    val state by viewModel.usersState.collectAsState()
+    val user = (state as? Resource.Success)?.data?.find { it.id == userId }
 
     var name by remember { mutableStateOf(user?.name ?: "") }
     var email by remember { mutableStateOf(user?.email ?: "") }
@@ -58,7 +59,7 @@ fun UserUpsertScreen(
                     if (userId == null) {
                         viewModel.addUser(name, email)
                     } else {
-                        viewModel.updateUser(userId, name, email)
+                        viewModel.updateUser(userId!!, name, email)
                     }
                     onBack()
                 },
